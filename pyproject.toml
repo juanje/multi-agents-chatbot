@@ -1,0 +1,16 @@
+[project]
+name = "multi-agents-chatbot"
+version = "0.1.0"
+description = "A learning project to understand LangGraph workflows and agent creation. Demonstrates multi-agent systems using LangGraph without LLM connections, focusing on workflow design, conditional routing, and agent orchestration."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "langchain>=1.0.0",
+    "langgraph>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "ruff>=0.14.1",
+]
