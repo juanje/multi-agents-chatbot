@@ -1,9 +1,12 @@
 # Multi-Agents Chatbot
 
-A learning project to understand LangGraph workflows and agent creation. This project includes two implementations:
+A learning project to understand LangGraph workflows and agent creation. This project includes three implementations:
 
 1. **`non-llm-chatbot.py`**: Multi-agent system without LLM connections, focusing on workflow design
-2. **`llm-chatbot.py`**: Multi-agent system with LLM integration using Ollama (llama3.2:3b)
+2. **`llm-chatbot.py`**: Multi-agent system with LLM integration using Ollama (llama3.2:3b)  
+3. **`hybrid-chatbot.py`**: Hybrid approach combining LangGraph orchestration with `create_agent` from LangChain for specialized sub-agents
+
+See [HYBRID_PATTERN.md](HYBRID_PATTERN.md) for understanding the hybrid pattern.
 
 ## 🏗️ System Architecture
 
@@ -59,7 +62,7 @@ uv sync
 uv run python non-llm-chatbot.py
 ```
 
-### Option 2: LLM-Powered Chatbot (with Ollama)
+### Option 2: LLM-Powered Chatbot with Manual LangGraph (LLM Integration)
 
 **Prerequisites:**
 - Install [Ollama](https://ollama.ai/)
@@ -72,6 +75,18 @@ uv sync
 
 # Run the LLM chatbot
 uv run python llm-chatbot.py
+```
+
+### Option 3: Hybrid Pattern (LangGraph + create_agent)
+
+**Prerequisites:** Same as Option 2
+
+```bash
+# Install dependencies
+uv sync
+
+# Run the hybrid chatbot
+uv run python hybrid-chatbot.py
 ```
 
 ## 📝 Supported Message Types
@@ -94,6 +109,17 @@ uv run python llm-chatbot.py
 - Stores both user messages (`HumanMessage`) and bot responses (`AIMessage`) in history
 - Prompts are customized based on message type for better context
 
+### Hybrid Chatbot (`hybrid-chatbot.py`)
+Same behavior as `llm-chatbot.py`, but with different architecture:
+
+**Technical Features:**
+- Uses `create_agent` with `response_format` parameter for structured output
+- Returns validated Pydantic objects in `result["structured_response"]`
+- Middleware (`@dynamic_prompt`) for dynamic system prompts
+- More modular: each agent is self-contained and reusable
+- Same temperatures: 0.0 for classification, 0.7 for responses
+- Same message history management as `llm-chatbot.py`
+
 ## 🎯 Learning Objectives
 
 This project focuses on understanding:
@@ -112,7 +138,7 @@ This project focuses on understanding:
 - **Ollama**: Local LLM runtime (llama3.2:3b)
 - **uv**: Package manager
 
-## 📚 Two Learning Paths
+## 📚 Three Learning Paths
 
 ### Path 1: `non-llm-chatbot.py` - LangGraph Fundamentals
 Focus on understanding LangGraph without the complexity of LLMs:
@@ -131,6 +157,15 @@ Build upon Path 1 by adding intelligent responses:
 - Managing conversation history
 - Trusting the LLM (no fallbacks for educational clarity)
 
+### Path 3: `hybrid-chatbot.py` - Hybrid Pattern (Best of Both)
+Combine LangGraph orchestration with create_agent specialists:
+- **LangGraph** for workflow control (same graph structure)
+- **create_agent** for individual specialized agents
+- **Middleware** in each sub-agent
+- Agent-level customization + workflow-level control
+- Scales to complex multi-agent systems
+- Production-ready pattern for large applications
+
 ## 📊 Features
 
 ### Common to Both Implementations
@@ -145,8 +180,8 @@ Build upon Path 1 by adding intelligent responses:
 - ✅ **Regex-based classification** - deterministic behavior
 - ✅ **Predefined responses** - fast and predictable
 
-### LLM Chatbot Specific
-- ✅ **Structured output classification** - guaranteed valid types with Pydantic
+### LLM Chatbot Specific (`llm-chatbot.py`)
+- ✅ **Structured output classification** - guaranteed valid types with Pydantic (`with_structured_output`)
 - ✅ **Dual temperature strategy** - 0.0 for classification, 0.7 for responses
 - ✅ **Detailed classification prompts** - includes examples and patterns for better accuracy
 - ✅ **Dynamic response generation** - contextual and natural responses
@@ -154,6 +189,14 @@ Build upon Path 1 by adding intelligent responses:
 - ✅ **Context-aware prompts** - different system prompts based on message type
 - ✅ **Simplified code** - trusts the LLM without fallbacks (educational)
 - ✅ **Local LLM** - privacy-focused with Ollama
+
+### Hybrid Chatbot Specific (`hybrid-chatbot.py`)
+- ✅ **create_agent structured output** - uses `response_format` parameter
+- ✅ **Middleware support** - dynamic prompts with `@dynamic_prompt` decorator
+- ✅ **Modular agent design** - each agent is self-contained and reusable
+- ✅ **Agent-level configuration** - independent temperature, tools, and middleware per agent
+- ✅ **Production-ready pattern** - scales to complex multi-agent systems
+- ✅ **Same LLM capabilities** - same intelligence and context-awareness as llm-chatbot
 
 ## 🎓 Educational Value
 
@@ -178,19 +221,22 @@ This project is designed for progressive learning:
 
 ## 🔍 Key Differences
 
-| Feature | non-llm-chatbot.py | llm-chatbot.py |
-|---------|-------------------|----------------|
-| Classification | Regex-based | LLM with structured output |
-| Classification Method | Pattern matching | Pydantic schema + detailed prompts + temp 0.0 |
-| Responses | Hardcoded | Generated by LLM (temp 0.7) |
-| Response Customization | Dict lookup | Dynamic prompts based on message type |
-| Context Awareness | None | Full conversation history (User + Bot) |
-| Message History | Simple dicts | HumanMessage + AIMessage |
-| Speed | Instant (~1ms) | 1-3 seconds |
-| Predictability | 100% deterministic | Classification consistent, responses varied |
-| Code Complexity | Simple, explicit | Simple, trusts LLM |
-| Learning Focus | LangGraph workflow | LLM integration + prompt engineering |
-| Dependencies | Minimal | Requires Ollama |
+| Feature | non-llm-chatbot.py | llm-chatbot.py | hybrid-chatbot.py |
+|---------|-------------------|----------------|-------------------|
+| Classification | Regex-based | LLM + `with_structured_output` | LLM + `create_agent` + `response_format` |
+| Classification Method | Pattern matching | Pydantic schema + detailed prompts + temp 0.0 | Same as llm-chatbot |
+| Responses | Hardcoded | Direct LLM invocation (temp 0.7) | Via `create_agent` (temp 0.7) |
+| Response Customization | Dict lookup | Manual system prompts | Middleware (`@dynamic_prompt`) |
+| Context Awareness | None | Full conversation history | Full conversation history |
+| Message History | Simple dicts | HumanMessage + AIMessage | HumanMessage + AIMessage |
+| Agent Architecture | Manual nodes | Manual LLM calls | `create_agent` specialists |
+| Modularity | Low | Medium | High (reusable agents) |
+| Speed | Instant (~1ms) | 1-3 seconds | 1-3 seconds |
+| Predictability | 100% deterministic | Classification consistent, responses varied | Classification consistent, responses varied |
+| Code Complexity | Simple, explicit | Simple, trusts LLM | Modular, production-ready |
+| Learning Focus | LangGraph workflow | LLM integration + prompt engineering | Hybrid pattern + middleware |
+| Dependencies | Minimal | Requires Ollama | Requires Ollama |
+| Best For | Learning basics | Direct control | Scalable systems |
 
 ## 🚦 Getting Started
 
@@ -199,5 +245,13 @@ This project is designed for progressive learning:
 2. Compare the code structure and workflow (same graph, different implementations)
 3. Move to `llm-chatbot.py` to see how LLMs enhance the agents
 4. Observe how conversation history is maintained with `HumanMessage` + `AIMessage`
-5. Experiment with different prompts, temperatures, and models
-6. Notice how detailed prompts improve classification accuracy
+5. Try `hybrid-chatbot.py` to see how to combine LangGraph + create_agent
+6. Compare all three approaches and understand trade-offs
+7. Experiment with different prompts, temperatures, and models
+8. Read [HYBRID_PATTERN.md](HYBRID_PATTERN.md) for understanding production patterns
+
+**Quick Comparison:**
+- **Learning LangGraph:** Start with `non-llm-chatbot.py`
+- **Full Control:** Use `llm-chatbot.py`
+- **Production/Scale:** Use `hybrid-chatbot.py`  
+- **Complex Workflows:** Definitely `hybrid-chatbot.py`
