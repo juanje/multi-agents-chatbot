@@ -2,7 +2,33 @@ from typing import Annotated, Literal
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
-from helpers import get_message_type, print_state
+from langchain_ollama import ChatOllama
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from pydantic import BaseModel, Field
+from helpers import print_state
+
+
+## LLM Configuration ##
+
+# Model for classification (deterministic)
+classifier_model = ChatOllama(
+    model="llama3.2:3b",
+    temperature=0.0,
+)
+
+# Model for answer generation (more creative)
+answer_model = ChatOllama(
+    model="llama3.2:3b",
+    temperature=0.7,
+)
+
+
+## Structured Output Schema ##
+
+class MessageClassification(BaseModel):
+    message_type: Literal["greeting", "question", "other"] = Field(
+        description="The type of message: 'greeting' for greetings, 'question' for questions, 'other' for everything else"
+    )
 
 
 ## Graph State ##
@@ -34,7 +60,7 @@ def chatbot_agent(state: State) -> State:
         user_input = input("Ask me anything: ")
     else:
         # If the chatbot has an answer, it's the continuation of the conversation
-        user_input = input(f"{chatbot_answer}: ")
+        user_input = input(f"Chatbot: {chatbot_answer}: \n\nYou: ")
 
     state.update(
         {
@@ -48,19 +74,50 @@ def chatbot_agent(state: State) -> State:
 # Analysis Agent
 def analysis_agent(state: State) -> State:
     user_question = state.get("user_question", "")
-    state["message_type"] = get_message_type(user_question)
+    
+    # Use LLM with structured output to classify the message type
+    classifier = classifier_model.with_structured_output(MessageClassification)
+    classification_prompt = [
+        SystemMessage(
+            content="""Classify the user's message into one of these categories:
+- 'greeting': if the message is a greeting like hello, hi, hola, hey, good morning, etc.
+- 'question': if the message is asking for information or help (contains ?, starts with who/what/where/when/why/how, or is clearly requesting information)
+- 'other': for any other type of message (statements, commands, comments, etc.)
+
+Focus on the intent: if they're asking something, it's a question."""
+        ),
+        HumanMessage(content=user_question),
+    ]
+    
+    result = classifier.invoke(classification_prompt)
+    state["message_type"] = result.message_type
     return state
 
 
 # Answer Agent
 def answer_agent(state: State) -> State:
     message_type = state.get("message_type", "other")
-    responses = {
-        "greeting": "Hello! How can I help you today?",
-        "question": "I'm sorry, I don't know the answer to that question.",
-        "other": "I'm sorry, I don't understand. Please try again.",
+    messages = state.get("messages", [])
+    
+    # Customize system message based on message type
+    system_prompts = {
+        "greeting": "You are a friendly assistant. Respond warmly to greetings and offer help.",
+        "question": "You are a helpful assistant. Answer the user's question clearly and concisely based on the conversation history.",
+        "other": "You are a helpful assistant. Respond appropriately to the user's message.",
     }
-    state["answer"] = responses[message_type]
+    system_message = system_prompts.get(message_type, system_prompts["other"])
+    
+    # Build conversation context
+    conversation = [SystemMessage(content=system_message)]
+    conversation.extend(messages)
+    
+    response = answer_model.invoke(conversation)
+    
+    # Update state with answer AND add it to messages history
+    state.update({
+        "answer": response.content,
+        "messages": [AIMessage(content=response.content)],
+    })
     return state
 
 
@@ -117,3 +174,4 @@ def run_chatbot():
 
 if __name__ == "__main__":
     run_chatbot()
+
