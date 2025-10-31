@@ -4,6 +4,7 @@ from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 from langchain.agents import create_agent
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
+from langgraph.config import get_stream_writer
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel, Field
@@ -85,14 +86,14 @@ def create_initial_state() -> State:
 
 # Chatbot Agent
 def chatbot_agent(state: State) -> State:
-    print_state(state)
+    #print_state(state)
     chatbot_answer = state.get("answer", "")
     # If the chatbot has no answer, it's the beginning of the conversation
     if not chatbot_answer:
-        user_input = input("Ask me anything: ")
+        user_input = input(">> Ask me anything: ")
     else:
         # If the chatbot has an answer, it's the continuation of the conversation
-        user_input = input(f"Chatbot: {chatbot_answer}: \n\nYou: ")
+        user_input = input(f">> Chatbot: {chatbot_answer}: \n\n>> You: ")
 
     state.update(
         {
@@ -106,16 +107,18 @@ def chatbot_agent(state: State) -> State:
 # Analysis Agent
 def analysis_agent(state: State) -> State:
     user_question = state.get("user_question", "")
-    
+    writer = get_stream_writer()
+    writer("Analyzing message...\n")
     # Use create_agent to classify the message type
     result = classification_agent.invoke({
         "messages": [HumanMessage(content=user_question)]
     })
-    
+    writer("Message classified.\n")
     # Extract structured response (MessageClassification Pydantic object)
     classification = result["structured_response"]
     message_type = classification.message_type
-    
+    writer(f"Message type: {message_type}\n")
+
     state["message_type"] = message_type
     return state
 
@@ -193,7 +196,8 @@ def run_chatbot():
     initial_state = create_initial_state()
 
     try:
-        graph.invoke(initial_state)
+        for chunk in graph.stream(initial_state, stream_mode="custom"):
+            print(chunk)
         print("Bye")
     except Exception as e:
         print(f"Error: {e}")
