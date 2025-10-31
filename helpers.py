@@ -36,3 +36,16 @@ def print_state(state):
     print("\n>>> Chatbot Agent State:")
     pprint(state)
     print("\n")
+
+def print_history_state(state):
+    """Print the current state in a formatted way."""
+    print("\n>>> Chatbot Agent history State:\n")
+    for s in state:
+        values = s.values
+        if 'user_question' not in values:
+            continue
+        else:
+            print(f">>> {values['user_question']=}")
+        print(f">>> {values['message_type']=}")
+        print(f">>> {values['answer']=}")
+        print("\n")
