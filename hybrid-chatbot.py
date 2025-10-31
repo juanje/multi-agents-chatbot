@@ -14,7 +14,7 @@ from helpers import print_state
 
 # Model for classification (deterministic)
 classifier_model = ChatOllama(
-    model="llama3.2:3b",
+    model="llama3.1:8b",
     temperature=0.0,
 )
 
