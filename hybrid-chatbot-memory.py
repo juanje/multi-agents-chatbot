@@ -21,13 +21,13 @@ checkpointer = InMemorySaver()
 
 # Model for classification (deterministic)
 classifier_model = ChatOllama(
-    model="llama3.1:8b",
+    model="granite4:3b",
     temperature=0.0,
 )
 
 # Model for answer generation (more creative)
 answer_model = ChatOllama(
-    model="llama3.2:3b",
+    model="granite4:3b",
     temperature=0.7,
 )
 
